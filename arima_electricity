@@ -1,0 +1,162 @@
+"""
+This is a Time Series Analysis project, done on a  Kaggle electricity usage dataset.
+"""
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+import heartrate
+
+heartrate.trace(browser=True)
+
+
+df = pd.read_csv("Electric_Production.csv")#, index_col="DATE", parse_dates=True)
+df.head()
+df['DATE'] = pd.to_datetime(df['DATE'])
+df = df.set_index('DATE')
+df.index.freq = 'MS'
+
+"""
+First check for stationarity in the data. This means that the
+statistical properties dont change over time. To check I will
+plot the rolling mean and std of the data.
+"""
+
+rolling_mean = df.rolling(window=12).mean()
+rolling_std = df.rolling(window=12).std()
+
+plt.plot(df, color="blue", label="Original")
+plt.plot(rolling_mean, color='red', label='Rolling Mean')
+plt.plot(rolling_std, color='black', label='Rolling Std')
+plt.legend(loc='best')
+plt.show()
+
+# The rolling mean appears to be relatively stable
+
+# The rolling std is almost linear.
+
+# The time series data appears stationary
+
+"""
+If the data wasn't stationary, you could make it stationary
+by taking teh first difference of the data:
+
+diff = data.diff(periods=1).dropna()    
+
+"""
+
+diff = df.diff(periods=1).dropna()
+rolling_mean = diff.rolling(window=12).mean()
+rolling_std = diff.rolling(window=12).std()
+
+plt.plot(diff, color="blue", label="Original")
+plt.plot(rolling_mean, color='red', label='Rolling Mean')
+plt.plot(rolling_std, color='black', label='Rolling Std')
+plt.legend(loc='best')
+plt.show()
+
+
+# Next I need to determine the values of p,d, and q
+# p - represents the number of lagged values to include
+# d - represents the degrees of differencing needed to make the data stationary
+# q - represents the number of lagged forcast errors to include in the MA (moving average) part of the model
+
+fig, (ax1, ax2) = plt.subplots(2,1, figsize=(10,8))
+sm.graphics.tsa.plot_acf(df, lags=40, ax= ax1)
+sm.graphics.tsa.plot_pacf(df, lags=40, ax=ax2)
+plt.show()
+
+"""
+The ACF plot shows the correlation between each value and its lagged values,
+while the PACF plot shows the correlation between each value and its lagged values
+after removing the influence of intervening values. You should look for significant
+spikes in the plots to determine the values of p and q.
+
+The d parameter can be determined by looking at the number of times you need to
+difference the data to make it stationary. If you needed to take the first difference
+of your data to make it stationary, the d parameter would be 1.
+"""
+
+p= 8
+d= 0
+q= 0
+
+model = sm.tsa.ARIMA(df, order=(p,d,q), freq="MS")
+
+results = model.fit()
+
+#Set the number of steps ahead you want to forcast
+n=3
+
+forecast = results.forecast(steps=n)
+
+"""
+Now that I got a good idea for how the model will work
+on this dataset, I will try and check the model's performance
+"""
+
+from sklearn.model_selection import train_test_split
+
+def train_model(p=8, d=1, q=0, n=3):
+    diff = df.diff(periods=1).dropna()
+    train_data, test_data = train_test_split(diff, test_size=0.3, shuffle=False)
+    
+    model_1 = sm.tsa.ARIMA(train_data, order=(p,d,q))
+    fitted_model = model_1.fit()
+    
+    forecast_values = fitted_model.forecast(steps=len(test_data))
+    
+    #test_data= list(test_data)
+    
+    # Calculate performance metrics
+    mse = mean_squared_error(test_data['Value'], forecast_values)
+    rmse = np.sqrt(mse)
+    mae = mean_absolute_error(test_data['Value'], forecast_values)
+    
+    print("MSE:", mse)
+    print("RMSE:", rmse)
+    print("MAE:", mae)
+    print(f"Forecasted Values:{forecast_values}")
+    
+    diff['forecast']= fitted_model.predict(start=250,end=450, dynamic=True)
+    diff[['Value','forecast']].plot(figsize=(12,8))
+    
+
+
+# Now to try training seasonally adjusted ARIMA (SARIMA)
+
+def train_s_model(p=10,d=1,q=1,n=5):
+    diff = df.diff(periods=1).dropna()
+    train_data, test_data = train_test_split(diff, test_size=0.25, shuffle=False)
+    
+    model_2 = sm.tsa.SARIMAX(train_data, order=(p,d,q), seasonal_order=(p,d,q,12))
+    fitted_model2 = model_2.fit()
+    forecast_values2 = fitted_model2.forecast(steps=len(test_data))
+   
+    # Calculate performance metrics
+    mse = mean_squared_error(test_data['Value'], forecast_values2)
+    rmse = np.sqrt(mse)
+    mae = mean_absolute_error(test_data['Value'], forecast_values2)
+    
+    print("MSE:", mse)
+    print("RMSE:", rmse)
+    print("MAE:", mae)
+    print(f"Forecasted Values:{forecast_values2}")
+    
+    # We have the base model
+    diff['forecast']= fitted_model2.predict(start=250,end=450, dynamic=True)
+    diff[['Value','forecast']].plot(figsize=(12,8))
+    
+    # Next lets get a look at the next 5 years
+    from pandas.tseries.offsets import DateOffset
+    # We want to look at 5 years, or 60 months out
+    future_dates = [diff.index[-1] + DateOffset(months=x) for x in range(0,60)]
+    future_datest_df = pd.DataFrame(index=future_dates[1:],columns=df.columns)
+    
+    future_df = pd.concat([df,future_datest_df])
+    future_df['forecast'] = results.predict(start = 350, end = 510, dynamic= True)  
+    future_df[['Value', 'forecast']].plot(figsize=(12, 8)) 
+    return future_df
+
+train_s_model()
