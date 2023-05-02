@@ -16,10 +16,11 @@ In addition, a function is defined to train a seasonally adjusted ARIMA (SARIMA)
 
 Figure 1 shows the performance of the ARIMA model in matching the trends of the time-series data in the short-term. The model appears to be quite accurate in predicting the fluctuations in the data for the first few months. 
 
-![Alt text](./img/Figure1.png
+![Alt text](./img/Figure1.png)
 
 In contrast, Figure 2 reveals that the ARIMA model's accuracy drops off significantly as the forecasting horizon increases. While it performs reasonably well for the first year or so, the model appears to struggle to capture the more significant trends and fluctuations over the longer-term. 
-![Alt text](./img/Figure2.png
+
+![Alt text](./img/Figure2.png)
 
 These results suggest that the ARIMA model may be useful for short-term forecasting but may not be well-suited for longer-term predictions.
 
