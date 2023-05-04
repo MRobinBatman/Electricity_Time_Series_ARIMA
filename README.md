@@ -1,5 +1,6 @@
+<p align=center>
 <img src="img/electricity_usage.png" style="display: block; margin: 0 auto;" />
-
+</p>
 
 # Electricity_Time_Series_ARIMA
 This project is about implementing the ARIMA (Autoregressive Integrated Moving Average) time series model to predict electricity consumption. The dataset used in this project is sourced from Kaggle [1], which contains monthly electricity production data in the United States from January 1985 to December 2018.
