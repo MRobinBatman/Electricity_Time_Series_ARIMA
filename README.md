@@ -1,5 +1,5 @@
 <p align=center>
-<img src="img/electricity_usage.png" style="display: block; margin: 0 auto;" />
+<img src="img/electricity_usage.png" />
 </p>
 
 # Electricity_Time_Series_ARIMA
